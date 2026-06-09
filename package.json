@@ -1,0 +1,9 @@
+{
+  "name": "cvs-content-answer-generator",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT"
+}

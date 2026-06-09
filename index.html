@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NarrativeIQ — Content & Messaging Tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy: #0F1629;
+    --panel: #1A2540;
+    --panel-light: #243152;
+    --border: #2E3F63;
+    --accent: #3B82F6;
+    --accent-dim: rgba(59,130,246,0.15);
+    --green: #10B981;
+    --green-dim: rgba(16,185,129,0.12);
+    --amber: #F59E0B;
+    --red: #EF4444;
+    --text: #F1F5F9;
+    --text-muted: #94A3B8;
+    --text-dim: #64748B;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', sans-serif;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  html, body { height: 100%; background: var(--navy); color: var(--text); font-family: var(--sans); font-size: 14px; }
+
+  /* ── LAYOUT ── */
+  .app { display: grid; grid-template-columns: 260px 1fr; grid-template-rows: 56px 1fr; height: 100vh; overflow: hidden; }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    grid-column: 1 / -1;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 20px; gap: 12px;
+  }
+  .topbar .logo { font-weight: 700; font-size: 15px; letter-spacing: -0.3px; color: var(--text); }
+  .topbar .logo span { color: var(--accent); }
+  .topbar .sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+  .topbar .tagline { font-size: 12px; color: var(--text-dim); }
+  .topbar .spacer { flex: 1; }
+  .topbar .api-badge {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--accent-dim); border: 1px solid var(--accent);
+    border-radius: 20px; padding: 4px 10px; font-size: 11px; color: var(--accent);
+  }
+  .topbar .api-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  #api-status-text { font-size: 11px; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow-y: auto; padding: 16px 12px;
+  }
+  .sidebar-section { margin-bottom: 20px; }
+  .sidebar-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--text-dim);
+    padding: 0 8px; margin-bottom: 8px;
+  }
+  .narrative-card {
+    background: var(--panel-light); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 6px;
+    cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    position: relative;
+  }
+  .narrative-card:hover { border-color: var(--accent); background: rgba(59,130,246,0.07); }
+  .narrative-card .n-title { font-weight: 600; font-size: 12px; color: var(--text); margin-bottom: 3px; }
+  .narrative-card .n-preview { font-size: 11px; color: var(--text-dim); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .narrative-card .n-del {
+    position: absolute; top: 8px; right: 8px; background: none; border: none;
+    color: var(--text-dim); cursor: pointer; font-size: 13px; opacity: 0; transition: opacity 0.15s;
+    line-height: 1; padding: 2px 4px; border-radius: 3px;
+  }
+  .narrative-card:hover .n-del { opacity: 1; }
+  .narrative-card .n-del:hover { color: var(--red); background: rgba(239,68,68,0.1); }
+
+  .add-narrative-btn {
+    width: 100%; background: none; border: 1px dashed var(--border);
+    border-radius: var(--radius-sm); color: var(--text-dim); padding: 8px;
+    cursor: pointer; font-size: 12px; font-family: var(--sans);
+    transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .add-narrative-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+  .history-item {
+    padding: 8px 10px; border-radius: var(--radius-sm); cursor: pointer;
+    transition: background 0.12s; border-left: 2px solid transparent;
+  }
+  .history-item:hover { background: var(--panel-light); border-left-color: var(--accent); }
+  .history-item .h-date { font-size: 10px; color: var(--text-dim); margin-bottom: 2px; }
+  .history-item .h-preview { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .settings-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 10px; border-radius: var(--radius-sm);
+  }
+  .settings-row label { font-size: 12px; color: var(--text-muted); }
+  select.tone-select {
+    background: var(--panel-light); border: 1px solid var(--border);
+    color: var(--text); border-radius: var(--radius-sm); padding: 4px 8px;
+    font-size: 11px; font-family: var(--sans); cursor: pointer;
+  }
+  select.tone-select:focus { outline: 1px solid var(--accent); }
+
+  /* ── MAIN ── */
+  .main { display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex; gap: 0; border-bottom: 1px solid var(--border);
+    padding: 0 20px; background: var(--panel);
+  }
+  .tab {
+    padding: 14px 16px; font-size: 13px; font-weight: 500; color: var(--text-dim);
+    cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s;
+    user-select: none;
+  }
+  .tab:hover { color: var(--text-muted); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── WORKSPACE ── */
+  .workspace { flex: 1; overflow-y: auto; padding: 24px 28px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* ── CONTENT INPUT ── */
+  .input-block { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .input-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+  }
+  .input-header .label { font-size: 12px; font-weight: 600; color: var(--text-muted); letter-spacing: 0.3px; }
+  .input-header .char-count { font-size: 11px; color: var(--text-dim); font-family: var(--mono); }
+  .platform-pills { display: flex; gap: 6px; }
+  .pill {
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500;
+    cursor: pointer; border: 1px solid var(--border); color: var(--text-dim);
+    background: none; transition: all 0.12s; font-family: var(--sans);
+  }
+  .pill.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .pill:hover:not(.active) { border-color: var(--text-dim); color: var(--text-muted); }
+
+  textarea.content-input {
+    width: 100%; min-height: 140px; background: transparent; border: none;
+    color: var(--text); font-family: var(--mono); font-size: 13px; line-height: 1.65;
+    padding: 16px; resize: vertical; outline: none;
+  }
+  textarea.content-input::placeholder { color: var(--text-dim); }
+
+  .input-footer { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-top: 1px solid var(--border); }
+  .input-footer .hint { font-size: 11px; color: var(--text-dim); }
+
+  .btn {
+    padding: 8px 18px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.15s; font-family: var(--sans);
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: #2563eb; }
+  .btn-primary:disabled { background: var(--panel-light); color: var(--text-dim); cursor: not-allowed; }
+  .btn-ghost { background: none; border: 1px solid var(--border); color: var(--text-muted); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+  /* ── LOADING ── */
+  .loading-block {
+    display: none; background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px; text-align: center;
+  }
+  .loading-block.visible { display: block; }
+  .loader-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 12px; }
+  .loader-dots span {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+    animation: bounce 1.2s ease-in-out infinite;
+  }
+  .loader-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loader-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+  .loading-block .loading-text { font-size: 13px; color: var(--text-muted); }
+
+  /* ── MATCH CARD ── */
+  .match-block { display: none; }
+  .match-block.visible { display: block; }
+  .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 12px; }
+
+  .match-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .match-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+    background: var(--green-dim);
+  }
+  .match-card-header .match-label { font-size: 12px; font-weight: 600; color: var(--green); }
+  .match-score { display: flex; align-items: center; gap: 8px; }
+  .match-score .score-val { font-family: var(--mono); font-size: 20px; font-weight: 500; color: var(--green); }
+  .match-score .score-label { font-size: 11px; color: var(--text-dim); }
+  .match-card-body { padding: 16px; }
+  .match-narrative-title { font-weight: 700; font-size: 15px; color: var(--text); margin-bottom: 8px; }
+  .match-narrative-text { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 14px; }
+  .match-reasoning { background: var(--panel-light); border-radius: var(--radius-sm); padding: 12px 14px; }
+  .match-reasoning .r-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); margin-bottom: 6px; }
+  .match-reasoning .r-text { font-size: 12px; color: var(--text-muted); line-height: 1.55; }
+
+  .confidence-bar-wrap { margin: 12px 0 0; }
+  .confidence-bar-bg { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .confidence-bar-fill { height: 100%; background: var(--green); border-radius: 2px; width: 0; transition: width 1s cubic-bezier(0.4,0,0.2,1); }
+
+  /* ── RESPONSE VARIANTS ── */
+  .variants-block { display: none; }
+  .variants-block.visible { display: block; }
+  .variants-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+  @media (max-width: 900px) { .variants-grid { grid-template-columns: 1fr; } }
+
+  .variant-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column;
+    transition: border-color 0.15s;
+  }
+  .variant-card:hover { border-color: var(--accent); }
+  .variant-header {
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .variant-label { font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; }
+  .variant-tag {
+    font-size: 10px; padding: 2px 8px; border-radius: 20px;
+    background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); font-weight: 500;
+  }
+  .variant-body { padding: 14px; flex: 1; }
+  .variant-text { font-size: 13px; color: var(--text-muted); line-height: 1.65; }
+  .variant-footer {
+    padding: 8px 14px; border-top: 1px solid var(--border);
+    display: flex; gap: 6px; align-items: center;
+  }
+  .copy-btn {
+    background: none; border: 1px solid var(--border); color: var(--text-dim);
+    border-radius: var(--radius-sm); padding: 4px 10px; font-size: 11px;
+    cursor: pointer; font-family: var(--sans); transition: all 0.12s;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .copy-btn.copied { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+  .approval-badge {
+    margin-left: auto; font-size: 10px; padding: 3px 8px; border-radius: 20px;
+    background: rgba(245,158,11,0.12); color: var(--amber); border: 1px solid var(--amber);
+  }
+
+  /* ── NARRATIVE MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100;
+    display: none; align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); width: 480px; max-width: 95vw;
+    padding: 24px; display: flex; flex-direction: column; gap: 14px;
+  }
+  .modal h3 { font-size: 15px; font-weight: 700; color: var(--text); }
+  .modal label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px; }
+  .modal input, .modal textarea {
+    width: 100%; background: var(--panel-light); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text); padding: 9px 12px;
+    font-family: var(--sans); font-size: 13px; outline: none;
+  }
+  .modal input:focus, .modal textarea:focus { border-color: var(--accent); }
+  .modal textarea { min-height: 100px; resize: vertical; line-height: 1.55; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* ── EXPORT TAB ── */
+  .export-area { display: none; }
+  .export-area.visible { display: block; }
+  .history-table { width: 100%; border-collapse: collapse; }
+  .history-table th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--text-dim); padding: 8px 12px; border-bottom: 1px solid var(--border);
+  }
+  .history-table td {
+    padding: 10px 12px; border-bottom: 1px solid rgba(46,63,99,0.5);
+    font-size: 12px; color: var(--text-muted); vertical-align: top;
+  }
+  .history-table tr:hover td { background: var(--panel-light); }
+  .history-table .trunc { max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .history-table .narrative-chip {
+    display: inline-block; background: var(--accent-dim); color: var(--accent);
+    border: 1px solid var(--accent); border-radius: 20px; padding: 1px 8px; font-size: 10px;
+  }
+
+  /* ── EMPTY ── */
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 60px 20px; text-align: center; color: var(--text-dim);
+  }
+  .empty-state .icon { font-size: 36px; margin-bottom: 12px; opacity: 0.5; }
+  .empty-state p { font-size: 13px; line-height: 1.6; max-width: 300px; }
+
+  /* ── API KEY SETUP ── */
+  .api-setup {
+    background: rgba(245,158,11,0.08); border: 1px solid var(--amber);
+    border-radius: var(--radius); padding: 16px 20px; display: flex; align-items: center; gap: 14px;
+  }
+  .api-setup .setup-icon { font-size: 20px; }
+  .api-setup .setup-text { flex: 1; }
+  .api-setup .setup-text strong { font-size: 13px; color: var(--amber); display: block; margin-bottom: 3px; }
+  .api-setup .setup-text span { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+  .api-key-input-wrap { display: flex; gap: 8px; margin-top: 10px; }
+  .api-key-input-wrap input {
+    flex: 1; background: var(--panel-light); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text); padding: 7px 12px;
+    font-family: var(--mono); font-size: 12px; outline: none;
+  }
+  .api-key-input-wrap input:focus { border-color: var(--accent); }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="logo">Narrative<span>IQ</span></div>
+    <div class="sep"></div>
+    <div class="tagline">Content Analysis & Messaging Tool</div>
+    <div class="spacer"></div>
+    <div class="api-badge">
+      <div class="dot" id="api-dot"></div>
+      <span id="api-status-text">No API key</span>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Client Narratives</div>
+      <div id="narratives-list"></div>
+      <button class="add-narrative-btn" onclick="openNarrativeModal()">
+        <span>＋</span> Add Narrative
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Output Tone</div>
+      <div class="settings-row">
+        <label>Platform style</label>
+        <select class="tone-select" id="tone-select">
+          <option value="professional">Professional</option>
+          <option value="conversational" selected>Conversational</option>
+          <option value="direct">Direct</option>
+          <option value="formal">Formal</option>
+          <option value="empathetic">Empathetic</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <label>Target platform</label>
+        <select class="tone-select" id="platform-select">
+          <option value="general" selected>General</option>
+          <option value="twitter">Twitter / X</option>
+          <option value="linkedin">LinkedIn</option>
+          <option value="facebook">Facebook</option>
+          <option value="press">Press statement</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Session History</div>
+      <div id="history-list">
+        <div style="font-size:11px;color:var(--text-dim);padding:4px 10px;">No history yet.</div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- TABS -->
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('analyze', this)">Analyze & Draft</div>
+      <div class="tab" onclick="switchTab('history', this)">Export Log</div>
+      <div class="tab" onclick="switchTab('settings', this)">API Settings</div>
+    </div>
+
+    <!-- ANALYZE TAB -->
+    <div class="workspace" id="tab-analyze">
+
+      <!-- API KEY SETUP -->
+      <div class="api-setup" id="api-setup-banner">
+        <div class="setup-icon">🔑</div>
+        <div class="setup-text">
+          <strong>OpenAI key is managed on the backend</strong>
+          <span>The server reads your key from <code>.env</code>, so the browser never stores it directly.</span>
+        </div>
+      </div>
+
+      <!-- CONTENT INPUT -->
+      <div class="input-block">
+        <div class="input-header">
+          <span class="label">Source Content</span>
+          <div class="platform-pills">
+            <button class="pill active" data-plat="social" onclick="setPlatformPill(this)">Social</button>
+            <button class="pill" data-plat="article" onclick="setPlatformPill(this)">Article</button>
+            <button class="pill" data-plat="press" onclick="setPlatformPill(this)">Press</button>
+            <button class="pill" data-plat="other" onclick="setPlatformPill(this)">Other</button>
+          </div>
+          <span class="char-count" id="char-count">0 chars</span>
+        </div>
+        <textarea class="content-input" id="content-input"
+          placeholder="Paste the social post, article excerpt, or other content you want to analyze…"
+          oninput="updateCharCount()"></textarea>
+        <div class="input-footer">
+          <span class="hint">Tip: include the original post URL or author context if available.</span>
+          <button class="btn btn-primary" id="analyze-btn" onclick="runAnalysis()">Analyze &amp; Generate Drafts →</button>
+        </div>
+      </div>
+
+      <!-- LOADING -->
+      <div class="loading-block" id="loading-block">
+        <div class="loader-dots"><span></span><span></span><span></span></div>
+        <div class="loading-text" id="loading-text">Analyzing content…</div>
+      </div>
+
+      <!-- MATCH RESULT -->
+      <div class="match-block" id="match-block">
+        <div class="section-title">Best Narrative Match</div>
+        <div class="match-card">
+          <div class="match-card-header">
+            <span class="match-label">✓ Matched Narrative</span>
+            <div class="match-score">
+              <span class="score-val" id="match-score-val">—</span>
+              <span class="score-label">confidence</span>
+            </div>
+          </div>
+          <div class="match-card-body">
+            <div class="match-narrative-title" id="match-narrative-title">—</div>
+            <div class="match-narrative-text" id="match-narrative-text">—</div>
+            <div class="match-reasoning">
+              <div class="r-label">Why this matches</div>
+              <div class="r-text" id="match-reasoning-text">—</div>
+            </div>
+            <div class="confidence-bar-wrap">
+              <div class="confidence-bar-bg">
+                <div class="confidence-bar-fill" id="confidence-bar"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESPONSE VARIANTS -->
+      <div class="variants-block" id="variants-block">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div class="section-title" style="margin-bottom:0">Response Drafts <span id="variants-platform-label" style="color:var(--accent);font-size:10px;margin-left:6px;"></span></div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost btn-sm" onclick="exportCurrentSession()">Export CSV</button>
+            <button class="btn btn-ghost btn-sm" onclick="runAnalysis()">↻ Regenerate</button>
+          </div>
+        </div>
+        <div class="variants-grid" id="variants-grid"></div>
+        <div style="margin-top:12px;padding:10px 14px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-sm);display:flex;align-items:center;gap:8px;">
+          <span style="font-size:13px;">⚠️</span>
+          <span style="font-size:11px;color:var(--text-dim);">These drafts require review and approval before publishing. All responses are attributed to your client.</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- HISTORY / EXPORT TAB -->
+    <div class="workspace" id="tab-history" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <div class="section-title" style="margin-bottom:0;">Session Log</div>
+        <button class="btn btn-ghost btn-sm" onclick="downloadAllCSV()">Download All CSV</button>
+      </div>
+      <div id="history-table-wrap">
+        <div class="empty-state">
+          <div class="icon">📋</div>
+          <p>No sessions logged yet. Analyze some content to see it appear here.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div class="workspace" id="tab-settings" style="display:none;">
+      <div class="section-title">API Configuration</div>
+      <div class="input-block" style="padding:20px;">
+        <div style="margin-bottom:14px;">
+          <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px;">Backend API key status</label>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span id="backend-key-status" style="font-size:13px;color:var(--text);">Checking...</span>
+            <button class="btn btn-ghost btn-sm" onclick="checkBackendKey()">Refresh</button>
+          </div>
+          <div style="margin-top:6px;font-size:11px;color:var(--text-dim);">The OpenAI key is stored on the server in <code style="font-family:var(--mono);background:var(--panel-light);padding:1px 5px;border-radius:3px;">.env</code> and never exposed to the browser.</div>
+        </div>
+        <div style="margin-bottom:14px;">
+          <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px;">Model</label>
+          <select class="tone-select" id="model-select" style="width:100%;padding:9px 12px;">
+            <option value="gpt-4.1-mini" selected>gpt-4.1-mini (recommended)</option>
+            <option value="gpt-4o-mini">gpt-4o-mini (faster)</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px;">Disclosure tag on drafts</label>
+          <input type="text" id="disclosure-tag" placeholder="e.g. Acme Corp Communications" style="width:100%;background:var(--panel-light);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:9px 12px;font-family:var(--sans);font-size:13px;outline:none;">
+          <div style="margin-top:6px;font-size:11px;color:var(--text-dim);">Appears on response cards as a reminder to attribute drafts correctly.</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- NARRATIVE MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <h3 id="modal-title">Add Narrative</h3>
+    <div>
+      <label>Narrative name / title</label>
+      <input type="text" id="n-name" placeholder="e.g. Community First">
+    </div>
+    <div>
+      <label>Narrative text</label>
+      <textarea id="n-text" placeholder="Describe the core message, key points, and tone of this narrative…"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveNarrative()">Save Narrative</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let narratives = JSON.parse(localStorage.getItem('niq_narratives') || '[]');
+let sessionLog = JSON.parse(localStorage.getItem('niq_log') || '[]');
+let editingNarrativeId = null;
+let currentPlatformPill = 'social';
+let backendReady = false;
+
+// ── BOOT ──
+window.onload = () => {
+  renderNarratives();
+  renderHistory();
+  checkBackendKey();
+  const discTag = localStorage.getItem('niq_disclosure') || '';
+  document.getElementById('disclosure-tag').value = discTag;
+  document.getElementById('disclosure-tag').addEventListener('input', e => {
+    localStorage.setItem('niq_disclosure', e.target.value);
+  });
+};
+
+// ── BACKEND STATUS ──
+async function checkBackendKey() {
+  try {
+    const resp = await fetch('/api/status');
+    const data = await resp.json();
+    backendReady = data.ready;
+    updateApiStatus(backendReady);
+    document.getElementById('backend-key-status').textContent = backendReady
+      ? 'OpenAI key loaded on server'
+      : 'Missing backend OpenAI key (.env)';
+  } catch (err) {
+    backendReady = false;
+    updateApiStatus(false);
+    document.getElementById('backend-key-status').textContent = 'Unable to reach backend';
+  }
+}
+
+function updateApiStatus(ready) {
+  const dot = document.getElementById('api-dot');
+  const txt = document.getElementById('api-status-text');
+  if (ready) {
+    dot.style.background = 'var(--green)';
+    txt.textContent = 'Backend OpenAI key loaded';
+    txt.style.color = 'var(--green)';
+  } else {
+    dot.style.background = 'var(--text-dim)';
+    txt.textContent = 'Backend key missing';
+    txt.style.color = 'var(--text-dim)';
+  }
+}
+
+// ── NARRATIVES ──
+function renderNarratives() {
+  const list = document.getElementById('narratives-list');
+  if (!narratives.length) {
+    list.innerHTML = '<div style="font-size:11px;color:var(--text-dim);padding:4px 10px 10px;">No narratives yet. Add your client\'s key messages.</div>';
+    return;
+  }
+  list.innerHTML = narratives.map(n => `
+    <div class="narrative-card" onclick="editNarrative('${n.id}')">
+      <div class="n-title">${esc(n.name)}</div>
+      <div class="n-preview">${esc(n.text)}</div>
+      <button class="n-del" onclick="deleteNarrative(event,'${n.id}')">✕</button>
+    </div>
+  `).join('');
+}
+function openNarrativeModal(id) {
+  editingNarrativeId = id || null;
+  document.getElementById('modal-title').textContent = id ? 'Edit Narrative' : 'Add Narrative';
+  if (id) {
+    const n = narratives.find(x => x.id === id);
+    document.getElementById('n-name').value = n.name;
+    document.getElementById('n-text').value = n.text;
+  } else {
+    document.getElementById('n-name').value = '';
+    document.getElementById('n-text').value = '';
+  }
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('n-name').focus(), 50);
+}
+function editNarrative(id) { openNarrativeModal(id); }
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+function closeModalOutside(e) { if (e.target === document.getElementById('modal-overlay')) closeModal(); }
+function saveNarrative() {
+  const name = document.getElementById('n-name').value.trim();
+  const text = document.getElementById('n-text').value.trim();
+  if (!name || !text) { alert('Please fill in both fields.'); return; }
+  if (editingNarrativeId) {
+    const idx = narratives.findIndex(x => x.id === editingNarrativeId);
+    narratives[idx] = { ...narratives[idx], name, text };
+  } else {
+    narratives.push({ id: Date.now().toString(), name, text });
+  }
+  localStorage.setItem('niq_narratives', JSON.stringify(narratives));
+  renderNarratives();
+  closeModal();
+}
+function deleteNarrative(e, id) {
+  e.stopPropagation();
+  if (!confirm('Remove this narrative?')) return;
+  narratives = narratives.filter(x => x.id !== id);
+  localStorage.setItem('niq_narratives', JSON.stringify(narratives));
+  renderNarratives();
+}
+
+// ── UI HELPERS ──
+function updateCharCount() {
+  const v = document.getElementById('content-input').value;
+  document.getElementById('char-count').textContent = v.length.toLocaleString() + ' chars';
+}
+function setPlatformPill(el) {
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  currentPlatformPill = el.dataset.plat;
+}
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-analyze').style.display = name === 'analyze' ? 'flex' : 'none';
+  document.getElementById('tab-history').style.display = name === 'history' ? 'flex' : 'none';
+  document.getElementById('tab-settings').style.display = name === 'settings' ? 'flex' : 'none';
+  if (name === 'history') renderHistoryTable();
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── ANALYSIS ──
+async function runAnalysis() {
+  if (!backendReady) {
+    alert('OpenAI key is not configured on the backend. Start the server and ensure .env contains OPENAI_API_KEY.');
+    return;
+  }
+  const content = document.getElementById('content-input').value.trim();
+  if (!content) { alert('Please paste some content to analyze.'); return; }
+  if (!narratives.length) { alert('Please add at least one client narrative in the sidebar first.'); return; }
+
+  const tone = document.getElementById('tone-select').value;
+  const platform = document.getElementById('platform-select').value;
+  const model = document.getElementById('model-select').value || 'gpt-4.1-mini';
+  const contentType = currentPlatformPill;
+
+  document.getElementById('loading-block').classList.add('visible');
+  document.getElementById('match-block').classList.remove('visible');
+  document.getElementById('variants-block').classList.remove('visible');
+  document.getElementById('analyze-btn').disabled = true;
+
+  const narrativesList = narratives.map((n, i) => `${i + 1}. "${n.name}": ${n.text}`).join('\n');
+
+  const systemPrompt = `You are a professional PR and communications analyst. You help match source content to client narratives and draft on-brand responses. Always respond in valid JSON only. No markdown, no preamble.`;
+
+  const userPrompt = `Analyze this ${contentType} content and match it to the best narrative, then generate three response drafts.
+
+SOURCE CONTENT:
+"""
+${content}
+"""
+
+CLIENT NARRATIVES:
+${narrativesList}
+
+RESPONSE SETTINGS:
+- Tone: ${tone}
+- Target platform: ${platform}
+
+Return ONLY this JSON structure:
+{
+  "match": {
+    "narrativeIndex": <1-based index>,
+    "narrativeName": "<name>",
+    "confidencePercent": <0-100>,
+    "reasoning": "<2-3 sentences explaining why this narrative fits>"
+  },
+  "variants": [
+    {
+      "label": "Variant A",
+      "toneTag": "<one word tone descriptor>",
+      "text": "<full response draft attributed to the client, 1-3 sentences>"
+    },
+    {
+      "label": "Variant B",
+      "toneTag": "<one word tone descriptor>",
+      "text": "<full response draft attributed to the client, 1-3 sentences>"
+    },
+    {
+      "label": "Variant C",
+      "toneTag": "<one word tone descriptor>",
+      "text": "<full response draft attributed to the client, 1-3 sentences>"
+    }
+  ]
+}`;
+
+  const steps = ['Analyzing content…', 'Matching narratives…', 'Drafting responses…'];
+  let stepIdx = 0;
+  const stepInterval = setInterval(() => {
+    stepIdx = (stepIdx + 1) % steps.length;
+    document.getElementById('loading-text').textContent = steps[stepIdx];
+  }, 1400);
+
+  try {
+    const resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, systemPrompt, userPrompt })
+    });
+    clearInterval(stepInterval);
+    if (!resp.ok) {
+      const errorBody = await resp.json().catch(() => null);
+      throw new Error(errorBody?.error || resp.statusText || 'Request failed');
+    }
+
+    const data = await resp.json();
+    const raw = data.text || data.data?.choices?.[0]?.message?.content || '';
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const result = JSON.parse(clean);
+    renderResults(result, content, platform, tone);
+  } catch (err) {
+    clearInterval(stepInterval);
+    alert('Error: ' + err.message);
+  } finally {
+    document.getElementById('loading-block').classList.remove('visible');
+    document.getElementById('analyze-btn').disabled = false;
+  }
+}
+
+function renderResults(result, sourceContent, platform, tone) {
+  const m = result.match;
+  const narrative = narratives.find(n => n.name === m.narrativeName) || narratives[m.narrativeIndex - 1];
+
+  document.getElementById('match-score-val').textContent = m.confidencePercent + '%';
+  document.getElementById('match-narrative-title').textContent = m.narrativeName;
+  document.getElementById('match-narrative-text').textContent = narrative ? narrative.text : '';
+  document.getElementById('match-reasoning-text').textContent = m.reasoning;
+  document.getElementById('match-block').classList.add('visible');
+  setTimeout(() => {
+    document.getElementById('confidence-bar').style.width = m.confidencePercent + '%';
+  }, 100);
+
+  const disclosure = localStorage.getItem('niq_disclosure') || '';
+  const platformLabel = document.getElementById('platform-select').options[document.getElementById('platform-select').selectedIndex].text;
+  document.getElementById('variants-platform-label').textContent = platformLabel;
+
+  const grid = document.getElementById('variants-grid');
+  grid.innerHTML = result.variants.map(v => `
+    <div class="variant-card">
+      <div class="variant-header">
+        <span class="variant-label">${esc(v.label)}</span>
+        <span class="variant-tag">${esc(v.toneTag)}</span>
+      </div>
+      <div class="variant-body">
+        <div class="variant-text">${esc(v.text)}</div>
+      </div>
+      <div class="variant-footer">
+        <button class="copy-btn" onclick="copyVariant(this,'${esc(v.text.replace(/'/g, "\\'"))}')">Copy</button>
+        ${disclosure ? `<span class="approval-badge">⚠ ${esc(disclosure)}</span>` : '<span class="approval-badge">⚠ Needs approval</span>'}
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('variants-block').classList.add('visible');
+
+  const entry = {
+    id: Date.now().toString(),
+    date: new Date().toLocaleString(),
+    sourcePreview: sourceContent.substring(0, 80),
+    narrative: m.narrativeName,
+    confidence: m.confidencePercent,
+    platform,
+    tone,
+    variants: result.variants.map(v => v.text)
+  };
+  sessionLog.unshift(entry);
+  if (sessionLog.length > 50) sessionLog = sessionLog.slice(0, 50);
+  localStorage.setItem('niq_log', JSON.stringify(sessionLog));
+  renderHistory();
+}
+
+function copyVariant(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied ✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  if (!sessionLog.length) { list.innerHTML = '<div style="font-size:11px;color:var(--text-dim);padding:4px 10px;">No history yet.</div>'; return; }
+  list.innerHTML = sessionLog.slice(0, 8).map(e => `
+    <div class="history-item">
+      <div class="h-date">${e.date}</div>
+      <div class="h-preview">${esc(e.sourcePreview)}…</div>
+    </div>
+  `).join('');
+}
+function renderHistoryTable() {
+  const wrap = document.getElementById('history-table-wrap');
+  if (!sessionLog.length) {
+    wrap.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>No sessions logged yet.</p></div>';
+    return;
+  }
+  wrap.innerHTML = `<table class="history-table">
+    <thead><tr>
+      <th>Date</th><th>Source Preview</th><th>Narrative</th><th>Confidence</th><th>Platform</th><th>Variants</th>
+    </tr></thead>
+    <tbody>${sessionLog.map(e => `
+      <tr>
+        <td style="white-space:nowrap;font-size:11px;">${esc(e.date)}</td>
+        <td class="trunc">${esc(e.sourcePreview)}</td>
+        <td><span class="narrative-chip">${esc(e.narrative)}</span></td>
+        <td><span style="font-family:var(--mono);color:var(--green);">${e.confidence}%</span></td>
+        <td>${esc(e.platform)}</td>
+        <td>${e.variants ? e.variants.length : 0}</td>
+      </tr>
+    `).join('')}</tbody>
+  </table>`;
+}
+
+function exportCurrentSession() {
+  if (!sessionLog.length) { alert('No sessions to export.'); return; }
+  downloadAllCSV();
+}
+function downloadAllCSV() {
+  if (!sessionLog.length) { alert('No sessions to export.'); return; }
+  const rows = [['Date','Source Preview','Narrative','Confidence','Platform','Tone','Variant 1','Variant 2','Variant 3']];
+  sessionLog.forEach(e => {
+    rows.push([
+      e.date, e.sourcePreview, e.narrative, e.confidence + '%', e.platform, e.tone,
+      ...(e.variants || ['','','']).map(v => v || '')
+    ]);
+  });
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `narrativeiq-log-${Date.now()}.csv`;
+  a.click();
+}
+</script>
+</body>
+</html>
